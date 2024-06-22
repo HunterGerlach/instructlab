@@ -228,32 +228,38 @@ def get_documents(
 
 def git_clone_checkout(repo_url: str, temp_dir: str, commit_hash: str = None, skip_checkout: bool = False) -> Repo:
     if not repo_url or not temp_dir:
-        logger.error("Invalid input parameters. 'repo_url' and 'temp_dir' are required.")
-        raise ValueError("Invalid input parameters. 'repo_url' and 'temp_dir' are required.")
+        error_msg = "Invalid input parameters. 'repo_url' and 'temp_dir' are required."
+        logger.error(error_msg)
+        raise ValueError(error_msg)
     
     try:
         logger.info(f"Cloning repository from {repo_url}...")
         with git.Git().custom_environment(GIT_SSL_NO_VERIFY='true'):
             repo = Repo.clone_from(repo_url, temp_dir)
     except git.exc.GitCommandError as e:
-        logger.error(f"Failed to clone repository: {e}")
-        raise
+        error_msg = f"Failed to clone repository from {repo_url}: {e}"
+        logger.error(error_msg)
+        raise git.exc.GitCommandError(cmd=e.command, status=e.status, stderr=error_msg)
     
     if commit_hash:
         try:
             if commit_hash not in repo.git.rev_list('--all'):
-                raise ValueError(f"Commit hash {commit_hash} does not exist in the repository.")
+                error_msg = f"Commit hash {commit_hash} does not exist in the repository."
+                logger.error(error_msg)
+                raise ValueError(error_msg)
         except git.exc.GitCommandError as e:
-            logger.error(f"Failed to verify commit hash: {e}")
-            raise
+            error_msg = f"Failed to verify commit hash {commit_hash}: {e}"
+            logger.error(error_msg)
+            raise git.exc.GitCommandError(cmd=e.command, status=e.status, stderr=error_msg)
     
     if not skip_checkout and commit_hash:
         try:
             logger.info(f"Checking out commit {commit_hash}...")
             repo.git.checkout(commit_hash)
         except git.exc.GitCommandError as e:
-            logger.error(f"Failed to checkout commit {commit_hash}: {e}")
-            raise
+            error_msg = f"Failed to checkout commit {commit_hash}: {e}"
+            logger.error(error_msg)
+            raise git.exc.GitCommandError(cmd=e.command, status=e.status, stderr=error_msg)
     
     return repo
 
