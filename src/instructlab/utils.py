@@ -234,12 +234,24 @@ def git_clone_checkout(repo_url: str, temp_dir: str, commit_hash: str = None, sk
     
     try:
         logger.info(f"Cloning repository from {repo_url}...")
-        with git.Git().custom_environment(GIT_SSL_NO_VERIFY='true'):
-            repo = Repo.clone_from(repo_url, temp_dir)
-    except git.exc.GitCommandError as e:
-        error_msg = f"Failed to clone repository from {repo_url}: {e}"
+        git_cmd = git.Git().custom_environment(GIT_SSL_NO_VERIFY='true')
+        repo = Repo.clone_from(repo_url, temp_dir, env=git_cmd.environment())
+    except git.exc.NoSuchPathError as e:
+        error_msg = f"No such path error: {e}"
         logger.error(error_msg)
-        raise git.exc.GitCommandError(e.command, e.status, error_msg)
+        raise git.exc.GitCommandError(e.args, e.status, error_msg)
+    except git.exc.InvalidGitRepositoryError as e:
+        error_msg = f"Invalid Git repository: {e}"
+        logger.error(error_msg)
+        raise git.exc.GitCommandError(e.args, e.status, error_msg)
+    except git.exc.GitCommandError as e:
+        error_msg = f"Git command error: {e.stderr}"
+        logger.error(error_msg)
+        raise git.exc.GitCommandError(e.args, e.status, error_msg)
+    except Exception as e:
+        error_msg = f"Unexpected error during git clone: {e}"
+        logger.error(error_msg)
+        raise Exception(error_msg)
     
     if commit_hash:
         try:
@@ -248,20 +260,29 @@ def git_clone_checkout(repo_url: str, temp_dir: str, commit_hash: str = None, sk
                 logger.error(error_msg)
                 raise ValueError(error_msg)
         except git.exc.GitCommandError as e:
-            error_msg = f"Failed to verify commit hash {commit_hash}: {e}"
+            error_msg = f"Git command error while verifying commit hash {commit_hash}: {e.stderr}"
             logger.error(error_msg)
-            raise git.exc.GitCommandError(e.command, e.status, error_msg)
+            raise git.exc.GitCommandError(e.args, e.status, error_msg)
+        except Exception as e:
+            error_msg = f"Unexpected error while verifying commit hash {commit_hash}: {e}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
     
     if not skip_checkout and commit_hash:
         try:
             logger.info(f"Checking out commit {commit_hash}...")
             repo.git.checkout(commit_hash)
         except git.exc.GitCommandError as e:
-            error_msg = f"Failed to checkout commit {commit_hash}: {e}"
+            error_msg = f"Git command error while checking out commit {commit_hash}: {e.stderr}"
             logger.error(error_msg)
-            raise git.exc.GitCommandError(e.command, e.status, error_msg)
+            raise git.exc.GitCommandError(e.args, e.status, error_msg)
+        except Exception as e:
+            error_msg = f"Unexpected error while checking out commit {commit_hash}: {e}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
     
     return repo
+
 
 
 def num_tokens_from_words(num_words) -> int:
