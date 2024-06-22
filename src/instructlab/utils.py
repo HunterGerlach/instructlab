@@ -234,8 +234,8 @@ def git_clone_checkout(repo_url: str, temp_dir: str, commit_hash: str = None, sk
     
     try:
         logger.info(f"Cloning repository from {repo_url}...")
-        git_cmd = git.Git().custom_environment(GIT_SSL_NO_VERIFY='true')
-        repo = Repo.clone_from(repo_url, temp_dir, env=git_cmd.environment())
+        with git.Git().custom_environment(GIT_SSL_NO_VERIFY='true'):
+            repo = Repo.clone_from(repo_url, temp_dir)
     except git.exc.NoSuchPathError as e:
         error_msg = f"No such path error: {e}"
         logger.error(error_msg)
@@ -282,6 +282,7 @@ def git_clone_checkout(repo_url: str, temp_dir: str, commit_hash: str = None, sk
             raise Exception(error_msg)
     
     return repo
+
 
 
 
