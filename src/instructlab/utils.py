@@ -204,14 +204,15 @@ def get_documents(
     file_patterns = source.get("patterns")
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
-            repo = git_clone_checkout(
+            logger.info("Processing files...")
+            repo = git_clone_checkout( # force tls verification false
                 repo_url=repo_url,
                 commit_hash=commit_hash,
                 temp_dir=temp_dir,
                 skip_checkout=skip_checkout,
             )
             file_contents = []
-
+            logger.info(f"Processing files from {repo_url} at commit {commit_hash}")
             logger.debug("Processing files...")
             for pattern in file_patterns:
                 for file_path in glob.glob(os.path.join(repo.working_dir, pattern)):
@@ -225,13 +226,35 @@ def get_documents(
         except (OSError, exc.GitCommandError, FileNotFoundError) as e:
             raise e
 
-
-def git_clone_checkout(
-    repo_url: str, temp_dir: str, commit_hash: str, skip_checkout: bool
-) -> Repo:
-    repo = Repo.clone_from(repo_url, temp_dir)
-    if not skip_checkout:
-        repo.git.checkout(commit_hash)
+def git_clone_checkout(repo_url: str, temp_dir: str, commit_hash: str = None, skip_checkout: bool = False) -> Repo:
+    if not repo_url or not temp_dir:
+        logger.error("Invalid input parameters. 'repo_url' and 'temp_dir' are required.")
+        raise ValueError("Invalid input parameters. 'repo_url' and 'temp_dir' are required.")
+    
+    try:
+        logger.info(f"Cloning repository from {repo_url}...")
+        with git.Git().custom_environment(GIT_SSL_NO_VERIFY='true'):
+            repo = Repo.clone_from(repo_url, temp_dir)
+    except git.exc.GitCommandError as e:
+        logger.error(f"Failed to clone repository: {e}")
+        raise
+    
+    if commit_hash:
+        try:
+            if commit_hash not in repo.git.rev_list('--all'):
+                raise ValueError(f"Commit hash {commit_hash} does not exist in the repository.")
+        except git.exc.GitCommandError as e:
+            logger.error(f"Failed to verify commit hash: {e}")
+            raise
+    
+    if not skip_checkout and commit_hash:
+        try:
+            logger.info(f"Checking out commit {commit_hash}...")
+            repo.git.checkout(commit_hash)
+        except git.exc.GitCommandError as e:
+            logger.error(f"Failed to checkout commit {commit_hash}: {e}")
+            raise
+    
     return repo
 
 
