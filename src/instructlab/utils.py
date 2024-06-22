@@ -239,7 +239,7 @@ def git_clone_checkout(repo_url: str, temp_dir: str, commit_hash: str = None, sk
     except git.exc.GitCommandError as e:
         error_msg = f"Failed to clone repository from {repo_url}: {e}"
         logger.error(error_msg)
-        raise git.exc.GitCommandError(cmd=e.command, status=e.status, stderr=error_msg)
+        raise git.exc.GitCommandError(e.command, e.status, error_msg)
     
     if commit_hash:
         try:
@@ -250,7 +250,7 @@ def git_clone_checkout(repo_url: str, temp_dir: str, commit_hash: str = None, sk
         except git.exc.GitCommandError as e:
             error_msg = f"Failed to verify commit hash {commit_hash}: {e}"
             logger.error(error_msg)
-            raise git.exc.GitCommandError(cmd=e.command, status=e.status, stderr=error_msg)
+            raise git.exc.GitCommandError(e.command, e.status, error_msg)
     
     if not skip_checkout and commit_hash:
         try:
@@ -259,7 +259,7 @@ def git_clone_checkout(repo_url: str, temp_dir: str, commit_hash: str = None, sk
         except git.exc.GitCommandError as e:
             error_msg = f"Failed to checkout commit {commit_hash}: {e}"
             logger.error(error_msg)
-            raise git.exc.GitCommandError(cmd=e.command, status=e.status, stderr=error_msg)
+            raise git.exc.GitCommandError(e.command, e.status, error_msg)
     
     return repo
 
